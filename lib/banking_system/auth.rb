@@ -18,21 +18,25 @@ class BankingSystem::Auth
     end
 
     def authenticate
+        begin
         users = @client.query("SELECT * FROM users WHERE username='#{@username}' LIMIT 1")
-        puts "user =>#{users.first}"
         
         if users.first
             current_user = users.first
             if  Utility.verify_password(current_user["password"], @password)
                 @prompt.ok("Welcome #{current_user["username"]} to Maropost bank.")
+                @banking = BankingSystem::Banking.new current_user,@client
+                @banking.dashboard
             else
-            @prompt.error("Username or password incorrect.")
-            login
+                reautheticate_user
             end
         else
-            @prompt.error("Username or password incorrect.")
-            login
+            reautheticate_user
         end
+        rescue => exception
+            reautheticate_user
+        end
+      
     end
 
     def signup
@@ -56,5 +60,10 @@ class BankingSystem::Auth
         end
     end
 
-    private :authenticate
+    def reautheticate_user
+        @prompt.error("Username or password incorrect.")
+        login
+    end
+
+    private :authenticate,:reautheticate_user
 end
