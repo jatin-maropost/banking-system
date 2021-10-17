@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "tty-prompt"
   spec.add_dependency "mysql2"
   spec.add_dependency "bcrypt"
+  spec.add_dependency "tty-table"
 
   # For more information and examples about making a new gem, checkout our
   # guide at: https://bundler.io/guides/creating_gem.html
