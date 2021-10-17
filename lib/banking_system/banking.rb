@@ -8,6 +8,10 @@ class BankingSystem::Banking
         @prompt = TTY::Prompt.new
     end
 
+    def current_user_id
+        return @current_user["id"]
+    end
+
     def dashboard
         banking_choices = {
             "Deposit money to your account" => 1,
@@ -24,10 +28,45 @@ class BankingSystem::Banking
         when 1
             deposit_money
         when 2
-            
+            withdraw_money
+        when 3
+        
+        when 4
+            @prompt.warn("Your balance is => #{user_balance current_user_id }")
+            dashboard
         else
             
         end
+    end
+
+    def withdraw_money
+        begin
+             amount = @prompt.ask("Enter amount to be withdraw?", required: true)
+        balance = user_balance current_user_id
+        if Integer(amount) <= balance
+            @dbClient.query("
+                insert into Transactions (
+                current_balance,
+                trans_amount,
+                transaction_type,
+                transferred_by,
+                transferred_to,
+                created_at,
+                updated_at,account_id)
+                values ('#{Integer(balance) - Integer(amount)}','#{amount}','2','#{current_user_id}','#{current_user_id}'
+                    ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{current_user_id}')")
+                
+            @prompt.ok("#{amount} withdraw successfully.")
+            dashboard
+            else
+            @prompt.error("You have insufficient balance, Enter a different amount!!")
+            sleep 0.3
+            withdraw_money
+        end
+        rescue => exception
+            puts exception
+        end
+       
     end
 
     private
@@ -65,5 +104,7 @@ class BankingSystem::Banking
             puts exception            
         end
     end
+
+ 
 
 end
