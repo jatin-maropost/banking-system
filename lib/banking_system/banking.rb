@@ -10,7 +10,7 @@ class BankingSystem::Banking
         @prompt = TTY::Prompt.new
     end
 
-    # Returns latest current user id
+    # Returns logged in current user id
     def current_user_id
         return @current_user["id"]
     end
@@ -35,9 +35,19 @@ class BankingSystem::Banking
         when 1
             amount = @prompt.ask("Enter amount to be deposited?", required: true)
             balance =  user_balance(current_user_id) + Integer(amount)
+            
             deposit_money amount,balance,current_user_id,current_user_id,1
+            @prompt.ok("#{amount} deposited successfully.")
+            dashboard
+
         when 2
-            withdraw_money
+            amount = @prompt.ask("Enter amount to be withdraw?", required: true)
+            balance = user_balance current_user_id
+
+            withdraw_money(amount,balance,amount,current_user_id,current_user_id,3)
+            @prompt.ok("#{amount} withdraw successfully.")
+            dashboard
+        
         when 3
             show_users
         when 4
@@ -49,10 +59,8 @@ class BankingSystem::Banking
     end
 
     #  Handles money withdraw from a user account
-    def withdraw_money
+    def withdraw_money(amount,balance,trans_amount,withdraw_by,deposit_to,trans_type)
         begin
-             amount = @prompt.ask("Enter amount to be withdraw?", required: true)
-            balance = user_balance current_user_id
         if Integer(amount) <= balance
             @dbClient.query("
                 insert into Transactions (
@@ -63,11 +71,9 @@ class BankingSystem::Banking
                 transferred_to,
                 created_at,
                 updated_at,account_id)
-                values ('#{Integer(balance) - Integer(amount)}','#{amount}','2','#{current_user_id}','#{current_user_id}'
-                    ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{current_user_id}')")
+                values ('#{Integer(balance) - Integer(amount)}','#{trans_amount}','#{trans_type}','#{withdraw_by}','#{deposit_to}'
+                    ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{deposit_to}')")
                 
-            @prompt.ok("#{amount} withdraw successfully.")
-            dashboard
             else
             @prompt.error("You have insufficient balance, Enter a different amount!!")
             sleep 0.3
@@ -95,8 +101,7 @@ class BankingSystem::Banking
                 updated_at,account_id)
                 values ('#{balance}','#{amount}','#{trans_type}','#{deposit_by}','#{deposit_to}'
                     ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{deposit_to}')")
-            @prompt.ok("#{amount} deposited successfully.")
-            dashboard
+            
         rescue => exception
             puts exception   
         end
@@ -120,26 +125,40 @@ class BankingSystem::Banking
 
     # Show list of the users in table format with their username 
     def show_users
-        users = @dbClient.query("select username,id from users where id != '#{current_user_id}'")
-        if users.count > 0
-            transfer_money users
-        else
-            @prompt.say("No accounts found.")
+        begin
+            users = @dbClient.query("select username,id from users where id != '#{current_user_id}'")
+            if users.count > 0
+                user_choices = {}
+                for user in users do
+                    user_choices[user["username"]] = user["id"]
+                end
+                transfer_money user_choices
+            else
+                @prompt.say("No accounts found.")
+            end
+        rescue => exception
+            puts exception
         end
         
     end
 
-    # List username of the user accounts 
+    # List name of the accounts available and transfer the money from one user
+    # to another user in fraction of seconds
     def transfer_money(users)
-        transfer_to_user = @prompt.ask("Enter username to tranfer money?", required: true)
+        # User id to whom money is to be transferred
+        transfer_to_user = @prompt.select("Select user to tranfer money?", users,required: true,help: "(Select a user from the list)", show_help: :always)
         amount = Integer(@prompt.ask("Enter amount to be transferred?", required: true))
+        
         balance = user_balance current_user_id
         
         if balance >= amount
             updated_balance = balance - amount 
-            deposit_money amount,updated_balance,3,current_user_id,1
+            deposit_money(amount,updated_balance,transfer_to_user,current_user_id,1)
+            withdraw_money(amount,balance,amount,current_user_id,transfer_to_user,3)
+            
             @prompt.ok("An amount of #{amount} have been transferred to #{amount}.")
-            @prompt.warn("Your account balance is #{balance - amount}.")
+            @prompt.warn("Your updated  account balance is #{balance - amount}.")
+            dashboard
         else
             @prompt.error("You have insufficient balance, Enter a different amount!!")
             sleep 1
