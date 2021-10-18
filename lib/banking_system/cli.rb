@@ -19,6 +19,7 @@ class BankingSystem::CLI
             @auth.signup
          else
              puts "Exit"
+             exit
          end
     end
 

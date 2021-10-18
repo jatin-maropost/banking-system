@@ -76,7 +76,8 @@ class BankingSystem::Auth
         @prompt.ok("Please login to your account => ")
         login
         rescue => exception
-        @prompt.error(exception)   
+        @prompt.error("Invalid username enter a new one.")
+        signup
         end
     end
 

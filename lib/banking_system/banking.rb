@@ -45,9 +45,14 @@ class BankingSystem::Banking
             amount = @prompt.ask("Enter amount to be withdraw?", required: true)
             balance = user_balance current_user_id
 
-            withdraw_money(amount,balance,amount,current_user_id,current_user_id,3)
-            @prompt.ok("#{amount} withdraw successfully.")
-            dashboard
+            if Integer(amount) <= balance
+                withdraw_money(amount,balance,amount,current_user_id,current_user_id,2,current_user_id)
+                @prompt.ok("#{amount} withdraw successfully.")
+                dashboard   
+                else
+                @prompt.error("You have insufficient balance, Enter a different amount!!")
+                perform_action
+            end
         
         when 3
             show_users
@@ -75,9 +80,8 @@ class BankingSystem::Banking
     end
 
     #  Handles money withdraw from a user account
-    def withdraw_money(amount,balance,trans_amount,withdraw_by,deposit_to,trans_type)
+    def withdraw_money(amount,balance,trans_amount,withdraw_by,deposit_to,trans_type,user_account_id)
         begin
-        if Integer(amount) <= balance
             @dbClient.query("
                 insert into Transactions (
                 current_balance,
@@ -88,13 +92,9 @@ class BankingSystem::Banking
                 created_at,
                 updated_at,account_id)
                 values ('#{Integer(balance) - Integer(amount)}','#{trans_amount}','#{trans_type}','#{withdraw_by}','#{deposit_to}'
-                    ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{deposit_to}')")
+                    ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{user_account_id}')")
                 
-            else
-            @prompt.error("You have insufficient balance, Enter a different amount!!")
-            sleep 0.3
-            withdraw_money
-        end
+           
         rescue => exception
             puts exception
         end
@@ -124,7 +124,8 @@ class BankingSystem::Banking
                 transferred_by,
                 transferred_to,
                 created_at,
-                updated_at,account_id)
+                updated_at,
+                account_id)
                 values ('#{balance}','#{amount}','#{trans_type}','#{deposit_by}','#{deposit_to}'
                     ,'#{Utility.get_timestamp}','#{Utility.get_timestamp}','#{deposit_to}')")
             
@@ -140,6 +141,7 @@ class BankingSystem::Banking
             trans = @dbClient.query("select current_balance from Transactions where account_id='#{user_id}' order by created_at desc limit 1")
             
             if trans.first
+                puts trans.first
                 return trans.first["current_balance"]
             else
                 return 0
@@ -178,9 +180,9 @@ class BankingSystem::Banking
         balance = user_balance current_user_id
         
         if balance >= amount
-            updated_balance = balance - amount 
-            deposit_money(amount,updated_balance,transfer_to_user,current_user_id,1)
-            withdraw_money(amount,balance,amount,current_user_id,transfer_to_user,3)
+            updated_deposit_balance = user_balance(transfer_to_user) + amount 
+            deposit_money(amount,updated_deposit_balance,transfer_to_user,current_user_id,1)
+            withdraw_money(amount,balance,amount,current_user_id,transfer_to_user,3,current_user_id)
             
             @prompt.ok("An amount of #{amount} have been transferred to #{amount}.")
             @prompt.warn("Your updated  account balance is #{balance - amount}.")
