@@ -21,7 +21,8 @@ class BankingSystem::Banking
             "Deposit money to your account" => 1,
             "Withdraw money from your account" => 2,
             "Transfer money to your friend" => 3,
-            "Check Balance" => 4
+            "Check Balance" => 4,
+            "Show latest transactions" => 5
         }
         @choice = @prompt.select("What would you like to do with your account?", banking_choices, required: true)
         perform_action
@@ -53,6 +54,21 @@ class BankingSystem::Banking
         when 4
             @prompt.warn("Your balance is => #{user_balance current_user_id }")
             dashboard
+
+            when 5
+               transactions = latest_transactions
+               if transactions.count
+                table = TTY::Table.new(
+                    ["Trans id","Transaction Amount","Transferred on","Trsanaction Type"],
+                    transactions.map {|x| x.values})
+                
+                # Prins transactions in table format in the console
+                puts table.render(:ascii)
+                dashboard
+                else
+                @prompt.warn("No tansactions found.")
+               end
+
         else
             
         end
@@ -83,6 +99,16 @@ class BankingSystem::Banking
             puts exception
         end
        
+    end
+
+    # Fetches latest transactions of a user and returns a list of transactions
+    def latest_transactions
+        transactions = @dbClient.query("
+            select ts.tranid,ts.trans_amount,ts.created_at,UPPER(tp.type) trans_type from transactions ts
+            inner join TransactionTypes tp on ts.transaction_type = tp.id
+            where ts.account_id = '#{current_user_id}'
+            order by ts.created_at desc")
+    return transactions
     end
 
     # Private methods of Banking class
